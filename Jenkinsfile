@@ -3,57 +3,53 @@ pipeline {
 
     environment {
         DOCKER_HUB_USER = 'shiva021'
-        DOCKER_HUB_PASS = 'M@chine2002'
         IMAGE_NAME = 'demo'
     }
 
     triggers {
+        // Check for code changes every 2 minutes (optional)
         pollSCM('H/2 * * * *')
     }
 
     stages {
-        stage('Checkout Code') {
+        stage('Checkout Code from GitHub') {
             steps {
-                echo "=== Cloning Repository from GitHub ==="
+                echo "=== Cloning Repository from GitHub (branch: b1) ==="
                 git branch: 'b1', url: 'https://github.com/navanish17/Lab_test.git'
             }
         }
 
-        stage('Clean Previous Containers') {
+        stage('Clean Old Containers (if any)') {
             steps {
-                echo "=== Cleaning old Docker containers (if any) ==="
+                echo "=== Cleaning old Docker containers ==="
                 bat '''
                     docker ps -a -q --filter "name=myapp" | findstr . && docker stop myapp && docker rm myapp || echo "No old container found."
                 '''
             }
         }
 
-        stage('Build Docker Image') {
+        stage('Build Docker Image Locally') {
             steps {
-                echo "=== Building Docker Image ==="
+                echo "=== Building Docker Image Locally ==="
                 bat '''
                     docker build -t %DOCKER_HUB_USER%/%IMAGE_NAME%:latest .
                 '''
             }
         }
 
-        stage('Run Docker Container') {
+        stage('Verify Image Build') {
             steps {
-                echo "=== Running Docker Container ==="
-                bat '''
-                    docker run -d -p 5000:5000 --name myapp %DOCKER_HUB_USER%/%IMAGE_NAME%:latest
-                    docker ps
-                '''
+                echo "=== Listing Docker Images ==="
+                bat 'docker images'
             }
         }
 
-        stage('Push Image to Docker Hub') {
+        stage('Run Docker Container') {
             steps {
-                echo "=== Logging into Docker Hub and Pushing Image ==="
+                echo "=== Running Container on Docker Desktop ==="
                 bat '''
-                    docker login -u %DOCKER_HUB_USER% -p %DOCKER_HUB_PASS%
-                    docker push %DOCKER_HUB_USER%/%IMAGE_NAME%:latest
-                    docker logout
+                    docker run -d -p 5000:5000 --name myapp %DOCKER_HUB_USER%/%IMAGE_NAME%:latest
+                    docker ps
                 '''
             }
         }
@@ -61,10 +57,10 @@ pipeline {
 
     post {
         success {
-            echo "✅ Build and push completed successfully!"
+            echo "✅ Docker image built and container running successfully on Docker Desktop!"
         }
         failure {
-            echo "❌ Build failed. Check console output for details."
+            echo "❌ Build failed. Check console output for errors."
         }
     }
 }
