@@ -2,7 +2,7 @@ pipeline {
     agent any
     
     triggers {
-        pollSCM('H/2 * * * *')  // Auto-check GitHub every 2 minutes
+        pollSCM('H/2 * * * *')
     }
     
     stages {
@@ -13,13 +13,30 @@ pipeline {
             }
         }
         
+        stage('List Files') {
+            steps {
+                echo "=== Listing files in workspace ==="
+                bat 'dir'
+            }
+        }
+        
+        stage('Check Docker') {
+            steps {
+                echo "=== Checking Docker ==="
+                bat 'docker --version'
+                bat 'docker ps'
+            }
+        }
+        
         stage('Clean Old Container') {
             steps {
                 echo "=== Cleaning old Docker container ==="
-                bat '''
-                    docker stop demo 2>nul || echo No container to stop
-                    docker rm demo 2>nul || echo No container to remove
-                '''
+                script {
+                    bat '''
+                        docker stop demo 2>nul || exit 0
+                        docker rm demo 2>nul || exit 0
+                    '''
+                }
             }
         }
         
@@ -27,13 +44,6 @@ pipeline {
             steps {
                 echo "=== Building Docker Image: demo:latest ==="
                 bat 'docker build -t demo:latest .'
-            }
-        }
-        
-        stage('Verify Image') {
-            steps {
-                echo "=== Verifying Docker Image ==="
-                bat 'docker images demo:latest'
             }
         }
         
@@ -48,7 +58,7 @@ pipeline {
     
     post {
         success {
-            echo "✅ SUCCESS! Container 'demo' is running on http://localhost:5000"
+            echo "✅ SUCCESS! Container running on http://localhost:5000"
         }
         failure {
             echo "❌ FAILED! Check console output for errors."
