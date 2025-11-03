@@ -8,7 +8,6 @@ pipeline {
     }
 
     triggers {
-        // Automatically check GitHub every 2 minutes for changes
         pollSCM('H/2 * * * *')
     }
 
@@ -40,7 +39,7 @@ pipeline {
 
         stage('Run Docker Container') {
             steps {
-                echo "=== Running New Docker Container ==="
+                echo "=== Running Docker Container ==="
                 bat '''
                     docker run -d -p 5000:5000 --name myapp %DOCKER_HUB_USER%/%IMAGE_NAME%:latest
                     docker ps
