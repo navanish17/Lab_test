@@ -1,66 +1,57 @@
 pipeline {
     agent any
-
-    environment {
-        DOCKER_HUB_USER = 'shiva021'
-        IMAGE_NAME = 'demo'
-    }
-
+    
     triggers {
-        // Check for code changes every 2 minutes (optional)
-        pollSCM('H/2 * * * *')
+        pollSCM('H/2 * * * *')  // Auto-check GitHub every 2 minutes
     }
-
+    
     stages {
-        stage('Checkout Code from GitHub') {
+        stage('Checkout Code') {
             steps {
-                echo "=== Cloning Repository from GitHub (branch: b1) ==="
+                echo "=== Checking out code from GitHub ==="
                 git branch: 'b1', url: 'https://github.com/navanish17/Lab_test.git'
             }
         }
-
-        stage('Clean Old Containers (if any)') {
+        
+        stage('Clean Old Container') {
             steps {
-                echo "=== Cleaning old Docker containers ==="
+                echo "=== Cleaning old Docker container ==="
                 bat '''
-                    docker ps -a -q --filter "name=myapp" | findstr . && docker stop myapp && docker rm myapp || echo "No old container found."
+                    docker stop demo 2>nul || echo No container to stop
+                    docker rm demo 2>nul || echo No container to remove
                 '''
             }
         }
-
-        stage('Build Docker Image Locally') {
+        
+        stage('Build Docker Image') {
             steps {
-                echo "=== Building Docker Image Locally ==="
-                bat '''
-                    docker build -t %DOCKER_HUB_USER%/%IMAGE_NAME%:latest .
-                '''
+                echo "=== Building Docker Image: demo:latest ==="
+                bat 'docker build -t demo:latest .'
             }
         }
-
-        stage('Verify Image Build') {
+        
+        stage('Verify Image') {
             steps {
-                echo "=== Listing Docker Images ==="
-                bat 'docker images'
+                echo "=== Verifying Docker Image ==="
+                bat 'docker images demo:latest'
             }
         }
-
-        stage('Run Docker Container') {
+        
+        stage('Run Container') {
             steps {
-                echo "=== Running Container on Docker Desktop ==="
-                bat '''
-                    docker run -d -p 5000:5000 --name myapp %DOCKER_HUB_USER%/%IMAGE_NAME%:latest
-                    docker ps
-                '''
+                echo "=== Running Docker Container ==="
+                bat 'docker run -d --name demo -p 5000:5000 demo:latest'
+                bat 'docker ps'
             }
         }
     }
-
+    
     post {
         success {
-            echo "✅ Docker image built and container running successfully on Docker Desktop!"
+            echo "✅ SUCCESS! Container 'demo' is running on http://localhost:5000"
         }
         failure {
-            echo "❌ Build failed. Check console output for errors."
+            echo "❌ FAILED! Check console output for errors."
         }
     }
 }
