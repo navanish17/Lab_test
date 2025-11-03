@@ -1,48 +1,60 @@
 pipeline {
     agent any
 
+    environment {
+        DOCKER_HUB_USER = 'shiva021'
+        DOCKER_HUB_PASS = 'M@chine2002'
+        IMAGE_NAME = 'demo'
+    }
+
     triggers {
-        // Poll SCM every 2 minutes for changes (works for Windows agents too)
+        // Automatically check GitHub every 2 minutes for changes
         pollSCM('H/2 * * * *')
     }
 
     stages {
-
-        stage('Checkout') {
+        stage('Checkout Code') {
             steps {
-                echo "=== Checking out source code from GitHub ==="
+                echo "=== Cloning Repository from GitHub ==="
                 git branch: 'b1', url: 'https://github.com/navanish17/Lab_test.git'
             }
         }
 
-        stage('Build') {
+        stage('Clean Previous Containers') {
             steps {
-                echo "=== BUILD STAGE (Windows) ==="
-                // Run commands in Windows shell
+                echo "=== Cleaning old Docker containers (if any) ==="
                 bat '''
-                    echo Building project...
-                    dir
-                    echo Build successful!
+                    docker ps -a -q --filter "name=myapp" | findstr . && docker stop myapp && docker rm myapp || echo "No old container found."
                 '''
             }
         }
 
-        stage('Test') {
+        stage('Build Docker Image') {
             steps {
-                echo "=== TEST STAGE (Windows) ==="
+                echo "=== Building Docker Image ==="
                 bat '''
-                    echo Running unit tests...
-                    echo All tests passed successfully!
+                    docker build -t %DOCKER_HUB_USER%/%IMAGE_NAME%:latest .
                 '''
             }
         }
 
-        stage('Deploy') {
+        stage('Run Docker Container') {
             steps {
-                echo "=== DEPLOY STAGE (Windows) ==="
+                echo "=== Running New Docker Container ==="
                 bat '''
-                    echo Deploying artifacts...
-                    echo Deployment complete!
+                    docker run -d -p 5000:5000 --name myapp %DOCKER_HUB_USER%/%IMAGE_NAME%:latest
+                    docker ps
+                '''
+            }
+        }
+
+        stage('Push Image to Docker Hub') {
+            steps {
+                echo "=== Logging into Docker Hub and Pushing Image ==="
+                bat '''
+                    docker login -u %DOCKER_HUB_USER% -p %DOCKER_HUB_PASS%
+                    docker push %DOCKER_HUB_USER%/%IMAGE_NAME%:latest
+                    docker logout
                 '''
             }
         }
@@ -50,10 +62,10 @@ pipeline {
 
     post {
         success {
-            echo "✅ Pipeline executed successfully!"
+            echo "✅ Build and push completed successfully!"
         }
         failure {
-            echo "❌ Pipeline failed! Please check console logs."
+            echo "❌ Build failed. Check console output for details."
         }
     }
 }
